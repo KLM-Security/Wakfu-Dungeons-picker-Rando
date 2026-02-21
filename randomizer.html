@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Randomizer DJ</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#121826; --text:#e6edf3; --muted:#9fb0c0;
+      --accent:#4ea1ff; --accent2:#7ee787; --border:#263042;
+    }
+    @media (prefers-color-scheme: light){
+      :root{ --bg:#f6f8fb; --card:#ffffff; --text:#0b1220; --muted:#516173; --border:#d8e0ea; }
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background:var(--bg); color:var(--text);
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .wrap{ width:min(880px, 100%); }
+    .card{
+      background:var(--card); border:1px solid var(--border);
+      border-radius:16px; padding:20px; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    h1{ font-size:20px; margin:0 0 8px; letter-spacing:.2px; }
+    p{ margin:0 0 14px; color:var(--muted); line-height:1.4; }
+    .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    button{
+      appearance:none; border:1px solid var(--border); background:transparent; color:var(--text);
+      padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:650;
+    }
+    button.primary{
+      background:linear-gradient(135deg, var(--accent), var(--accent2));
+      border:none; color:#061018;
+    }
+    button:hover{ filter:brightness(1.08); }
+    .result{
+      margin-top:16px; padding:14px; border-radius:14px; border:1px dashed var(--border);
+    }
+    .result .label{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.12em; }
+    .result .value{ font-size:18px; margin-top:6px; font-weight:750; }
+    .split{
+      display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; margin-top:14px;
+    }
+    @media (max-width: 720px){ .split{ grid-template-columns:1fr; } }
+    .mini{
+      border:1px solid var(--border); border-radius:14px; padding:14px;
+    }
+    .mini h2{ font-size:14px; margin:0 0 10px; color:var(--muted); font-weight:700; }
+    select, input[type="checkbox"]{
+      accent-color: var(--accent);
+    }
+    select{
+      width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border);
+      background:transparent; color:var(--text);
+    }
+    .history{
+      list-style:none; padding:0; margin:10px 0 0; display:flex; flex-direction:column; gap:8px;
+      max-height:260px; overflow:auto;
+    }
+    .history li{
+      border:1px solid var(--border); border-radius:12px; padding:10px 12px;
+      display:flex; justify-content:space-between; gap:10px; align-items:flex-start;
+    }
+    .history small{ color:var(--muted); }
+    .badge{
+      font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--border); color:var(--muted);
+      white-space:nowrap;
+    }
+    .footer{
+      margin-top:14px; color:var(--muted); font-size:12px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+    a{ color:var(--muted); text-decoration:none; border-bottom:1px dotted var(--border); }
+    a:hover{ color:var(--text); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Randomizer DJ (2-step)</h1>
+      <p>Règle : on tire d’abord une <strong>tranche</strong>, puis un <strong>DJ</strong> dans la tranche tirée.</p>
+
+      <div class="row">
+        <button class="primary" id="rollBtn">🎲 Roll</button>
+        <button id="copyBtn">📋 Copier résultat</button>
+        <button id="clearBtn">🧹 Vider historique</button>
+
+        <label style="display:flex; align-items:center; gap:8px; margin-left:auto; color:var(--muted);">
+          <input type="checkbox" id="weighted" />
+          Pondéré par nb de DJ
+        </label>
+      </div>
+
+      <div class="result" id="resultBox" aria-live="polite">
+        <div class="label">Résultat</div>
+        <div class="value" id="resultText">—</div>
+      </div>
+
+      <div class="split">
+        <div class="mini">
+          <h2>Tranche forcée (optionnel)</h2>
+          <p style="margin:0 0 10px; color:var(--muted); font-size:13px;">
+            Si tu choisis une tranche ici, le roll ne tirera que dans cette tranche (puis DJ).
+          </p>
+          <select id="forcedTranche">
+            <option value="">(Aucune) Tirage normal</option>
+          </select>
+        </div>
+
+        <div class="mini">
+          <h2>Historique</h2>
+          <ul class="history" id="history"></ul>
+        </div>
+      </div>
+
+      <div class="footer">
+        <span>Astuce : active “Pondéré” si tu veux que chaque <em>DJ</em> ait la même probabilité globale.</span>
+        <span>Fichier autonome : pas de dépendances externes.</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+/**
+ * Données extraites du fichier Randomizer.txt
+ * Tranches = seuils (20, 35, 50...) comme libellé, et liste de DJ/BU.
+ */
+const TRANCHES = [
+  { level: 20, items: ["Dj Bouftou royal","Dj Shin larve","Dj Tofu royale"] },
+  { level: 35, items: ["Dj piou royale","Dj Abraknelle","DJ Morfor"] },
+  { level: 50, items: ["Dj Moogr","Dj craqueleur","Dj morts-brulé","DJ pirate","Dj champs"] },
+  { level: 65, items: ["Dj skouale","Dj bwork","Dj bouftou sauvage","Dj nimbo","Dj crabes qui pete","Dj mollusky","Dj kokolhanta"] },
+  { level: 80, items: ["BU Excarnus","Dj Corbac","Dj Grand Orokk","Dj mulou","Dj arakne","Dj rats","Dj trutruche","Dj petit groin","Dj palais du tsu"] },
+  { level: 95, items: ["Dj vampyro","Dj morbax","Dj Scarafeuille","Dj Hammamoule","Bu Milkar","Dj misolé","Dj sliptorium","Dj slek"] },
+  { level: 110, items: ["Dj yechti","Dj gelée","Bu Corbeau nwar","Dj Magik riktus","Dj arene dansante","Dj chucho","Bu Magmog","Dj glagla"] },
+  { level: 125, items: ["Dj flaque","Dj pichon","Bu Dragon cochon","Dj miss fritz","Dj piktus","Dj smares","Dj Hagen glace","Dj sylarg"] },
+  { level: 140, items: ["Dj Potofeu le destructeur de prostate","Dj lenald","Dj phoreur","Dj noirespores","Dj wabit ( jawdin de la weine )","Dj Chene mou"] },
+  { level: 155, items: ["Dj enutrof","Dj sram","Dj blop","Dj racine du ma","Dj lab womewo","Dj salbéoptere"] },
+  { level: 170, items: ["Dj méka xel passé","Dj Raipiode xel présent","Dj remington","Dj lampionaute","Dj patapoutrerie","Dj riktus élite","Bu serre d'acier"] },
+  { level: 185, items: ["Dj kaniboule","Dj crocodaille","Dj kanivores","Dj Gerbouille","Dj tropikoko"] },
+  { level: 200, items: ["Dj dragoeuf","Dj hiboux","Dj fléopard","Dj blérox","Dj tombeau pandala","Dj crete gelée","Dj mordor"] },
+];
+
+const $ = (sel) => document.querySelector(sel);
+const rollBtn = $("#rollBtn");
+const copyBtn = $("#copyBtn");
+const clearBtn = $("#clearBtn");
+const resultText = $("#resultText");
+const historyEl = $("#history");
+const forcedTranche = $("#forcedTranche");
+const weighted = $("#weighted");
+
+// Populate tranche dropdown
+for (const t of TRANCHES) {
+  const opt = document.createElement("option");
+  opt.value = String(t.level);
+  opt.textContent = `Tranche ${t.level} (${t.items.length} DJ)`;
+  forcedTranche.appendChild(opt);
+}
+
+function randInt(maxExclusive) {
+  // crypto-safe if possible
+  if (window.crypto && crypto.getRandomValues) {
+    const u32 = new Uint32Array(1);
+    crypto.getRandomValues(u32);
+    return u32[0] % maxExclusive;
+  }
+  return Math.floor(Math.random() * maxExclusive);
+}
+
+function pickOne(arr) {
+  return arr[randInt(arr.length)];
+}
+
+/**
+ * Mode normal (non pondéré):
+ * 1) on tire une tranche uniformément (toutes tranches ont la même proba)
+ * 2) puis on tire un DJ uniformément dans la tranche
+ *
+ * Mode pondéré:
+ * on tire d'abord un DJ globalement uniformément en pondérant les tranches par leur taille
+ * (ça respecte toujours la règle "tranche puis DJ", mais la tranche est plus probable si elle contient plus de DJ)
+ */
+function roll() {
+  // forced tranche?
+  const forcedLevel = forcedTranche.value ? Number(forcedTranche.value) : null;
+
+  let tranche;
+  if (forcedLevel !== null) {
+    tranche = TRANCHES.find(t => t.level === forcedLevel);
+  } else if (weighted.checked) {
+    const total = TRANCHES.reduce((acc, t) => acc + t.items.length, 0);
+    let r = randInt(total);
+    for (const t of TRANCHES) {
+      if (r < t.items.length) { tranche = t; break; }
+      r -= t.items.length;
+    }
+  } else {
+    tranche = pickOne(TRANCHES);
+  }
+
+  const dj = pickOne(tranche.items);
+  const out = `Tranche ${tranche.level} → ${dj}`;
+  setResult(out);
+  pushHistory(tranche.level, dj);
+}
+
+function setResult(text) {
+  resultText.textContent = text;
+}
+
+function pushHistory(level, dj) {
+  const li = document.createElement("li");
+
+  const left = document.createElement("div");
+  left.innerHTML = `<div style="font-weight:750;">${escapeHtml(dj)}</div><small>Tranche ${escapeHtml(String(level))}</small>`;
+
+  const right = document.createElement("div");
+  right.className = "badge";
+  right.textContent = new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  li.appendChild(left);
+  li.appendChild(right);
+
+  historyEl.prepend(li);
+
+  // cap history
+  const max = 25;
+  while (historyEl.children.length > max) {
+    historyEl.removeChild(historyEl.lastChild);
+  }
+}
+
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g, (m) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[m]));
+}
+
+rollBtn.addEventListener("click", roll);
+
+copyBtn.addEventListener("click", async () => {
+  const text = resultText.textContent;
+  if (!text || text === "—") return;
+  try {
+    await navigator.clipboard.writeText(text);
+    copyBtn.textContent = "✅ Copié";
+    setTimeout(() => copyBtn.textContent = "📋 Copier résultat", 900);
+  } catch {
+    // fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    copyBtn.textContent = "✅ Copié";
+    setTimeout(() => copyBtn.textContent = "📋 Copier résultat", 900);
+  }
+});
+
+clearBtn.addEventListener("click", () => {
+  historyEl.innerHTML = "";
+  setResult("—");
+});
+</script>
+</body>
+</html>
