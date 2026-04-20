@@ -86,9 +86,14 @@
         <button id="copyBtn">📋 Copier résultat</button>
         <button id="clearBtn">🧹 Vider historique</button>
 
-        <label style="display:flex; align-items:center; gap:8px; margin-left:auto; color:var(--muted);">
+        <label style="display:flex; align-items:center; gap:8px; color:var(--muted);">
           <input type="checkbox" id="weighted" />
           Pondéré par nb de DJ
+        </label>
+
+        <label style="display:flex; align-items:center; gap:8px; color:var(--muted);">
+          <input type="checkbox" id="rollStasis" />
+          Roll du stasis (2 à 5)
         </label>
       </div>
 
@@ -99,13 +104,26 @@
 
       <div class="split">
         <div class="mini">
-          <h2>Tranche forcée (optionnel)</h2>
+          <h2>Filtre de tranches</h2>
           <p style="margin:0 0 10px; color:var(--muted); font-size:13px;">
-            Si tu choisis une tranche ici, le roll ne tirera que dans cette tranche (puis DJ).
+            Choisis la plage de tranches autorisée pour le roll, ou force une tranche précise si besoin.
           </p>
-          <select id="forcedTranche">
-            <option value="">(Aucune) Tirage normal</option>
-          </select>
+          <div style="display:grid; gap:10px;">
+            <div>
+              <label for="rangeFilter" style="display:block; margin:0 0 6px; color:var(--muted); font-size:13px;">Plage</label>
+              <select id="rangeFilter">
+                <option value="20-110">Tranches 20 à 110</option>
+                <option value="125-170">Tranches 125 à 170</option>
+                <option value="185-245">Tranches 185 à 245</option>
+              </select>
+            </div>
+            <div>
+              <label for="forcedTranche" style="display:block; margin:0 0 6px; color:var(--muted); font-size:13px;">Tranche forcée (optionnel)</label>
+              <select id="forcedTranche">
+                <option value="">(Aucune) Tirage normal dans la plage</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="mini">
@@ -140,8 +158,16 @@ const TRANCHES = [
   { level: 170, items: ["Dj méka xel passé","Dj Raipiode xel présent","Dj remington","Dj lampionaute","Dj patapoutrerie","Dj riktus élite","Bu serre d'acier"] },
   { level: 185, items: ["Dj kaniboule","Dj crocodaille","Dj kanivores","Dj Gerbouille","Dj tropikoko","BU Moon"] },
   { level: 200, items: ["Dj dragoeuf","Dj hiboux","Dj fléopard","Dj blérox","Dj tombeau pandala","Dj crete gelée","Dj mordor","BU Nogord Lézarélé"] },
-  { level: 215, items: ["Dj Carapatte","Dj Plantigarde","Dj Vandaliénés","Dj Mansots","Dj Crustargneux","Dj Toundrasoirs","Dj Cagnardeurs"] }
+  { level: 215, items: ["Dj Carapatte","Dj Plantigarde","Dj Vandaliénés","Dj Mansots","Dj Crustargneux","Dj Toundrasoirs","Dj Cagnardeurs"] },
+  { level: 230, items: ["Placeholder 230 à remplacer"] },
+  { level: 245, items: ["Placeholder 245 à remplacer"] }
 ];
+
+const RANGE_GROUPS = {
+  "20-110": [20, 35, 50, 65, 80, 95, 110],
+  "125-170": [125, 140, 155, 170],
+  "185-245": [185, 200, 215, 230, 245]
+};
 
 const $ = (sel) => document.querySelector(sel);
 const rollBtn = $("#rollBtn");
@@ -151,17 +177,10 @@ const resultText = $("#resultText");
 const historyEl = $("#history");
 const forcedTranche = $("#forcedTranche");
 const weighted = $("#weighted");
-
-// Populate tranche dropdown
-for (const t of TRANCHES) {
-  const opt = document.createElement("option");
-  opt.value = String(t.level);
-  opt.textContent = `Tranche ${t.level} (${t.items.length} DJ/BU)`;
-  forcedTranche.appendChild(opt);
-}
+const rollStasis = $("#rollStasis");
+const rangeFilter = $("#rangeFilter");
 
 function randInt(maxExclusive) {
-  // crypto-safe if possible
   if (window.crypto && crypto.getRandomValues) {
     const u32 = new Uint32Array(1);
     crypto.getRandomValues(u32);
@@ -174,36 +193,50 @@ function pickOne(arr) {
   return arr[randInt(arr.length)];
 }
 
-/**
- * Mode normal (non pondéré):
- * 1) on tire une tranche uniformément (toutes tranches ont la même proba)
- * 2) puis on tire un DJ uniformément dans la tranche
- *
- * Mode pondéré:
- * on tire d'abord un DJ globalement uniformément en pondérant les tranches par leur taille
- * (ça respecte toujours la règle "tranche puis DJ", mais la tranche est plus probable si elle contient plus de DJ)
- */
+function getAvailableTranches() {
+  const levels = RANGE_GROUPS[rangeFilter.value] || [];
+  return TRANCHES.filter(t => levels.includes(t.level));
+}
+
+function populateForcedTranches() {
+  const available = getAvailableTranches();
+  forcedTranche.innerHTML = '<option value="">(Aucune) Tirage normal dans la plage</option>';
+
+  for (const t of available) {
+    const opt = document.createElement("option");
+    opt.value = String(t.level);
+    opt.textContent = `Tranche ${t.level} (${t.items.length} DJ/BU)`;
+    forcedTranche.appendChild(opt);
+  }
+}
+
 function roll() {
-  // forced tranche?
+  const available = getAvailableTranches();
   const forcedLevel = forcedTranche.value ? Number(forcedTranche.value) : null;
 
   let tranche;
   if (forcedLevel !== null) {
-    tranche = TRANCHES.find(t => t.level === forcedLevel);
+    tranche = available.find(t => t.level === forcedLevel);
   } else if (weighted.checked) {
-    const total = TRANCHES.reduce((acc, t) => acc + t.items.length, 0);
+    const total = available.reduce((acc, t) => acc + t.items.length, 0);
     let r = randInt(total);
-    for (const t of TRANCHES) {
-      if (r < t.items.length) { tranche = t; break; }
+    for (const t of available) {
+      if (r < t.items.length) {
+        tranche = t;
+        break;
+      }
       r -= t.items.length;
     }
   } else {
-    tranche = pickOne(TRANCHES);
+    tranche = pickOne(available);
   }
 
   const dj = pickOne(tranche.items);
-  const stasis = randInt(4) + 2;
-  const out = `Tranche ${tranche.level} → ${dj} • Stasis ${stasis}`;
+  const stasis = rollStasis.checked ? randInt(4) + 2 : null;
+  const out = stasis === null
+    ? `Tranche ${tranche.level} → ${dj}`
+    : `Tranche ${tranche.level} → ${dj} • Stasis ${stasis}`;
+
   setResult(out);
   pushHistory(tranche.level, dj, stasis);
 }
@@ -216,7 +249,10 @@ function pushHistory(level, dj, stasis) {
   const li = document.createElement("li");
 
   const left = document.createElement("div");
-  left.innerHTML = `<div style="font-weight:750;">${escapeHtml(dj)}</div><small>Tranche ${escapeHtml(String(level))} • Stasis ${escapeHtml(String(stasis))}</small>`;
+  const meta = stasis === null
+    ? `Tranche ${escapeHtml(String(level))}`
+    : `Tranche ${escapeHtml(String(level))} • Stasis ${escapeHtml(String(stasis))}`;
+  left.innerHTML = `<div style="font-weight:750;">${escapeHtml(dj)}</div><small>${meta}</small>`;
 
   const right = document.createElement("div");
   right.className = "badge";
@@ -226,7 +262,6 @@ function pushHistory(level, dj, stasis) {
 
   historyEl.prepend(li);
 
-  // cap history
   const max = 25;
   while (historyEl.children.length > max) {
     historyEl.removeChild(historyEl.lastChild);
@@ -239,6 +274,7 @@ function escapeHtml(str){
   }[m]));
 }
 
+rangeFilter.addEventListener("change", populateForcedTranches);
 rollBtn.addEventListener("click", roll);
 
 copyBtn.addEventListener("click", async () => {
@@ -249,7 +285,6 @@ copyBtn.addEventListener("click", async () => {
     copyBtn.textContent = "✅ Copié";
     setTimeout(() => copyBtn.textContent = "📋 Copier résultat", 900);
   } catch {
-    // fallback
     const ta = document.createElement("textarea");
     ta.value = text;
     document.body.appendChild(ta);
@@ -265,6 +300,8 @@ clearBtn.addEventListener("click", () => {
   historyEl.innerHTML = "";
   setResult("—");
 });
+
+populateForcedTranches();
 </script>
 </body>
 </html>
