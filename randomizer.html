@@ -78,8 +78,8 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>Randomizer DJ (2-step)</h1>
-      <p>Règle : on tire d’abord une <strong>tranche</strong>, puis un <strong>DJ</strong> dans la tranche tirée.</p>
+      <h1>Randomizer DJ (2-step + stasis)</h1>
+      <p>Règle : on tire d’abord une <strong>tranche</strong>, puis un <strong>DJ/BU</strong> dans la tranche tirée, avec un <strong>niveau de stasis aléatoire entre 2 et 5</strong>.</p>
 
       <div class="row">
         <button class="primary" id="rollBtn">🎲 Roll</button>
@@ -115,7 +115,7 @@
       </div>
 
       <div class="footer">
-        <span>Astuce : active “Pondéré” si tu veux que chaque <em>DJ</em> ait la même probabilité globale.</span>
+        <span>Astuce : active “Pondéré” si tu veux que chaque <em>DJ/BU</em> ait la même probabilité globale.</span>
         <span>Fichier autonome : pas de dépendances externes.</span>
       </div>
     </div>
@@ -130,16 +130,17 @@ const TRANCHES = [
   { level: 20, items: ["Dj Bouftou royal","Dj Shin larve","Dj Tofu royale"] },
   { level: 35, items: ["Dj piou royale","Dj Abraknelle","DJ Morfor"] },
   { level: 50, items: ["Dj Moogr","Dj craqueleur","Dj morts-brulé","DJ pirate","Dj champs"] },
-  { level: 65, items: ["Dj skouale","Dj bwork","Dj bouftou sauvage","Dj nimbo","Dj crabes qui pete","Dj mollusky","Dj kokolhanta"] },
+  { level: 65, items: ["Dj skouale","Dj bwork","Dj bouftou sauvage","Dj nimbo","Dj crabes qui pete","Dj mollusky","Dj kokokolhanta"] },
   { level: 80, items: ["BU Excarnus","Dj Corbac","Dj Grand Orokk","Dj mulou","Dj arakne","Dj rats","Dj trutruche","Dj petit groin","Dj palais du tsu"] },
   { level: 95, items: ["Dj vampyro","Dj morbax","Dj Scarafeuille","Dj Hammamoule","Bu Milkar","Dj misolé","Dj sliptorium","Dj slek"] },
   { level: 110, items: ["Dj yechti","Dj gelée","Bu Corbeau nwar","Dj Magik riktus","Dj arene dansante","Dj chucho","Bu Magmog","Dj glagla"] },
   { level: 125, items: ["Dj flaque","Dj pichon","Bu Dragon cochon","Dj miss fritz","Dj piktus","Dj smares","Dj Hagen glace","Dj sylarg"] },
-  { level: 140, items: ["Dj Potofeu le destructeur de prostate","Dj lenald","Dj phoreur","Dj noirespores","Dj wabit ( jawdin de la weine )","Dj Chene mou"] },
-  { level: 155, items: ["Dj enutrof","Dj sram","Dj blop","Dj racine du ma","Dj lab womewo","Dj salbéoptere"] },
+  { level: 140, items: ["Dj Potofeu","Dj lenald","Dj phoreur","Dj noirespores","Dj wabit ( jawdin de la weine )","Dj Chene mou"] },
+  { level: 155, items: ["Dj enutrof","Dj sram","Dj blop","Dj racine du mal","Dj lab womewo","Dj salbéoptere","DJ Vignoble Ignoble"] },
   { level: 170, items: ["Dj méka xel passé","Dj Raipiode xel présent","Dj remington","Dj lampionaute","Dj patapoutrerie","Dj riktus élite","Bu serre d'acier"] },
-  { level: 185, items: ["Dj kaniboule","Dj crocodaille","Dj kanivores","Dj Gerbouille","Dj tropikoko"] },
-  { level: 200, items: ["Dj dragoeuf","Dj hiboux","Dj fléopard","Dj blérox","Dj tombeau pandala","Dj crete gelée","Dj mordor"] },
+  { level: 185, items: ["Dj kaniboule","Dj crocodaille","Dj kanivores","Dj Gerbouille","Dj tropikoko","BU Moon"] },
+  { level: 200, items: ["Dj dragoeuf","Dj hiboux","Dj fléopard","Dj blérox","Dj tombeau pandala","Dj crete gelée","Dj mordor","BU Nogord Lézarélé"] },
+  { level: 215, items: ["Dj Carapatte","Dj Plantigarde","Dj Vandaliénés","Dj Mansots","Dj Crustargneux","Dj Toundrasoirs","Dj Cagnardeurs"] }
 ];
 
 const $ = (sel) => document.querySelector(sel);
@@ -155,7 +156,7 @@ const weighted = $("#weighted");
 for (const t of TRANCHES) {
   const opt = document.createElement("option");
   opt.value = String(t.level);
-  opt.textContent = `Tranche ${t.level} (${t.items.length} DJ)`;
+  opt.textContent = `Tranche ${t.level} (${t.items.length} DJ/BU)`;
   forcedTranche.appendChild(opt);
 }
 
@@ -201,20 +202,21 @@ function roll() {
   }
 
   const dj = pickOne(tranche.items);
-  const out = `Tranche ${tranche.level} → ${dj}`;
+  const stasis = randInt(4) + 2;
+  const out = `Tranche ${tranche.level} → ${dj} • Stasis ${stasis}`;
   setResult(out);
-  pushHistory(tranche.level, dj);
+  pushHistory(tranche.level, dj, stasis);
 }
 
 function setResult(text) {
   resultText.textContent = text;
 }
 
-function pushHistory(level, dj) {
+function pushHistory(level, dj, stasis) {
   const li = document.createElement("li");
 
   const left = document.createElement("div");
-  left.innerHTML = `<div style="font-weight:750;">${escapeHtml(dj)}</div><small>Tranche ${escapeHtml(String(level))}</small>`;
+  left.innerHTML = `<div style="font-weight:750;">${escapeHtml(dj)}</div><small>Tranche ${escapeHtml(String(level))} • Stasis ${escapeHtml(String(stasis))}</small>`;
 
   const right = document.createElement("div");
   right.className = "badge";
