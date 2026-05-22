@@ -51,13 +51,13 @@
       box-shadow:var(--shadow);
       padding:20px;
       display:grid;
-      grid-template-rows:auto auto 1fr auto;
+      grid-template-rows:auto auto 1fr auto auto;
       gap:18px;
     }
     .topbar{
       display:flex;
       align-items:flex-start;
-      justify-content:space-between;
+      justify-content:flex-start;
       gap:16px;
       flex-wrap:wrap;
     }
@@ -72,15 +72,6 @@
       color:var(--muted);
       font-size:14px;
     }
-    .status-chip{
-      padding:10px 14px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:var(--panel);
-      color:var(--muted);
-      font-size:13px;
-      white-space:nowrap;
-    }
     .controls{
       display:grid;
       grid-template-columns:repeat(5, minmax(0, auto));
@@ -89,9 +80,7 @@
     }
     button, select{
       appearance:none;
-      border:1px solid var(--border);
       border-radius:14px;
-      background:var(--panel);
       color:var(--text);
       font:inherit;
     }
@@ -99,8 +88,21 @@
       cursor:pointer;
       padding:11px 15px;
       font-weight:700;
+      border:1px solid rgba(88,166,255,.28);
+      background:linear-gradient(180deg, rgba(88,166,255,.18), rgba(88,166,255,.08));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
     }
-    button:hover{ filter:brightness(1.05); }
+    button:hover{
+      filter:brightness(1.06);
+      border-color:rgba(116,217,159,.34);
+    }
+    select{
+      border:1px solid var(--border);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
+        var(--panel-soft);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
+    }
     .control-field{
       display:grid;
       gap:6px;
@@ -114,7 +116,6 @@
       min-height:0;
       display:grid;
       grid-template-columns:minmax(260px, .82fr) minmax(320px, .95fr) minmax(300px, .88fr);
-      grid-template-rows:auto auto;
       gap:18px;
       align-items:stretch;
     }
@@ -129,17 +130,13 @@
       grid-column:1;
       grid-row:1;
     }
-    .future-panel{
-      grid-column:1;
-      grid-row:2;
-    }
     .visual-panel{
       grid-column:2;
-      grid-row:1 / span 2;
+      grid-row:1;
     }
     .history-panel{
       grid-column:3;
-      grid-row:1 / span 2;
+      grid-row:1;
     }
     .panel-inner{
       height:100%;
@@ -214,27 +211,12 @@
       font-size:14px;
       min-height:20px;
     }
-    .future-panel .panel-inner{
-      justify-content:space-between;
+    .legal-note{
+      line-height:1.35;
     }
-    .future-space{
-      flex:1;
-      min-height:280px;
-      border:1px dashed var(--border);
-      border-radius:20px;
-      padding:20px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      text-align:center;
+    .future-credit{
       color:var(--muted);
-      background:linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0));
-    }
-    .future-space strong{
-      display:block;
-      margin-bottom:10px;
-      color:var(--text);
-      font-size:20px;
+      letter-spacing:.04em;
     }
     .history-list{
       list-style:none;
@@ -300,6 +282,15 @@
       display:flex;
       justify-content:center;
     }
+    .legal-footer{
+      display:flex;
+      justify-content:center;
+      gap:12px;
+      flex-wrap:wrap;
+      color:var(--muted);
+      font-size:11px;
+      text-align:center;
+    }
     .roll-btn{
       min-width:min(100%, 480px);
       min-height:78px;
@@ -316,10 +307,8 @@
     @media (max-width: 1120px){
       .dashboard{
         grid-template-columns:1fr 1fr;
-        grid-template-rows:auto auto auto;
       }
       .result-panel,
-      .future-panel,
       .visual-panel,
       .history-panel{
         grid-column:auto;
@@ -327,9 +316,6 @@
       }
       .history-panel{
         grid-column:1 / -1;
-      }
-      .future-panel{
-        grid-column:1;
       }
       .history-list{
         max-height:360px;
@@ -354,7 +340,6 @@
         grid-template-rows:auto;
       }
       .result-panel,
-      .future-panel,
       .visual-panel,
       .history-panel{
         grid-column:auto;
@@ -368,9 +353,6 @@
       }
       .visual-wrap{
         min-height:220px;
-      }
-      .future-space{
-        min-height:200px;
       }
       .history-list{
         max-height:320px;
@@ -389,7 +371,6 @@
         <h1>Randomizer DJ / BU Wakfu v1.1</h1>
         <p>Roll par tranche avec filtres de categorie, stasis 1 a 10 optionnel et apercu visuel lie au type de donjon.</p>
       </div>
-      <div class="status-chip" id="statusText">Pret pour un nouveau roll</div>
     </div>
 
     <div class="controls">
@@ -425,18 +406,6 @@
             </div>
           </div>
           <div class="visual-caption" id="visualCaption"></div>
-        </div>
-      </section>
-
-      <section class="panel future-panel">
-        <div class="panel-inner">
-          <div class="eyebrow">Espace reserve</div>
-          <div class="future-space">
-            <div>
-              <strong>Liens et mentions</strong>
-              <span>Zone gardee volontairement vide pour tes reseaux, ton GitHub, ton Discord et les futures mentions speciales.</span>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -486,6 +455,11 @@
     <div class="roll-row">
       <button class="roll-btn" id="rollBtn">Roll</button>
     </div>
+
+    <footer class="legal-footer">
+      <span class="legal-note">Fan site non officiel. Cet outil n'est pas affilie a Ankama. Wakfu, ses noms, visuels et elements associes appartiennent a Ankama.</span>
+      <span class="future-credit">Made by Arka</span>
+    </footer>
   </div>
 
   <script>
@@ -740,7 +714,6 @@
     const previewImage = $("#previewImage");
     const visualWrap = $("#visualWrap");
     const visualCaption = $("#visualCaption");
-    const statusText = $("#statusText");
 
     function randInt(maxExclusive) {
       if (window.crypto && crypto.getRandomValues) {
@@ -838,7 +811,6 @@
       const available = getAvailableTranches();
       if (available.length === 0) {
         setResult("Aucun resultat", "Aucun DJ ou BU disponible avec les filtres actuels.");
-        statusText.textContent = "Aucun resultat possible";
         setVisual(null);
         return;
       }
@@ -850,7 +822,6 @@
 
       if (!selectedTranche) {
         setResult("Tranche indisponible", "La tranche forcee n'est plus compatible avec les filtres choisis.");
-        statusText.textContent = "Tranche forcee invalide";
         setVisual(null);
         return;
       }
@@ -868,7 +839,6 @@
       setResult(text, meta);
       setVisual(item);
       pushHistory(selectedTranche, item, stasis);
-      statusText.textContent = `${item.name} obtenu`;
     }
 
     rangeFilter.addEventListener("change", populateForcedTranches);
@@ -880,7 +850,6 @@
       if (!text || text === "-") return;
       try {
         await navigator.clipboard.writeText(text);
-        statusText.textContent = "Resultat copie";
       } catch {
         const area = document.createElement("textarea");
         area.value = text;
@@ -888,7 +857,6 @@
         area.select();
         document.execCommand("copy");
         document.body.removeChild(area);
-        statusText.textContent = "Resultat copie";
       }
     });
 
@@ -896,7 +864,6 @@
       historyEl.innerHTML = "";
       setResult("-", "Selectionne tes filtres, puis lance un roll.");
       setVisual(null);
-      statusText.textContent = "Historique vide";
     });
 
     populateForcedTranches();
